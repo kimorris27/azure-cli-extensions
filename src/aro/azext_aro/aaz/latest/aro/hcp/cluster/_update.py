@@ -23,9 +23,9 @@ class Update(AAZCommand):
     """
 
     _aaz_info = {
-        "version": "2026-09-01-preview",
+        "version": "2026-10-01",
         "resources": [
-            ["mgmt-plane", "/subscriptions/{}/resourcegroups/{}/providers/microsoft.redhatopenshift/hcpopenshiftclusters/{}", "2026-09-01-preview"],
+            ["mgmt-plane", "/subscriptions/{}/resourcegroups/{}/providers/microsoft.redhatopenshift/hcpopenshiftclusters/{}", "2026-10-01"],
         ]
     }
 
@@ -107,11 +107,56 @@ class Update(AAZCommand):
             help="The identities assigned to this resource by the user.",
             nullable=True,
         )
+        _args_schema.container_registry_managed_identity = AAZResourceIdArg(
+            options=["--container-registry-mi", "--container-registry-managed-identity"],
+            arg_group="Identity",
+            help="The resource ID of the user-assigned managed identity used for container registry image pulls.",
+            nullable=True,
+        )
 
         user_assigned_identities = cls._args_schema.user_assigned_identities
         user_assigned_identities.Element = AAZObjectArg(
             nullable=True,
             blank={},
+        )
+
+        # define Arg Group "Platform"
+
+        _args_schema = cls._args_schema
+        _args_schema.operators_authentication = AAZObjectArg(
+            options=["--operators-authentication"],
+            arg_group="Platform",
+            help="The configuration that the operators of the cluster have to authenticate to Azure",
+        )
+
+        operators_authentication = cls._args_schema.operators_authentication
+        operators_authentication.user_assigned_identities = AAZObjectArg(
+            options=["user-assigned-identities"],
+            help="Represents the information related to Azure User-Assigned managed identities needed to perform Operators authentication based on Azure User-Assigned Managed Identities",
+        )
+
+        user_assigned_identities = cls._args_schema.operators_authentication.user_assigned_identities
+        user_assigned_identities.control_plane_operators = AAZDictArg(
+            options=["control-plane-operators"],
+            help="The set of Azure User-Assigned Managed Identities leveraged for the Control Plane operators of the cluster. The set of required managed identities is dependent on the Cluster's OpenShift version.",
+        )
+        user_assigned_identities.data_plane_operators = AAZDictArg(
+            options=["data-plane-operators"],
+            help="The set of Azure User-Assigned Managed Identities leveraged for the Data Plane operators of the cluster. The set of required managed identities is dependent on the Cluster's OpenShift version.",
+        )
+        user_assigned_identities.service_managed_identity = AAZResourceIdArg(
+            options=["service-managed-identity"],
+            help="Represents the information associated to an Azure User-Assigned Managed Identity whose purpose is to perform service level actions.",
+        )
+
+        control_plane_operators = cls._args_schema.operators_authentication.user_assigned_identities.control_plane_operators
+        control_plane_operators.Element = AAZResourceIdArg(
+            nullable=True,
+        )
+
+        data_plane_operators = cls._args_schema.operators_authentication.user_assigned_identities.data_plane_operators
+        data_plane_operators.Element = AAZResourceIdArg(
+            nullable=True,
         )
 
         # define Arg Group "Properties"
@@ -141,11 +186,6 @@ class Update(AAZCommand):
                 maximum=10080,
                 minimum=0,
             ),
-        )
-        _args_schema.platform = AAZObjectArg(
-            options=["--platform"],
-            arg_group="Properties",
-            help="Azure platform configuration",
         )
 
         etcd = cls._args_schema.etcd
@@ -213,42 +253,6 @@ class Update(AAZCommand):
             fmt=AAZStrArgFormat(
                 max_length=255,
             ),
-        )
-
-        platform = cls._args_schema.platform
-        platform.operators_authentication = AAZObjectArg(
-            options=["operators-authentication"],
-            help="The configuration that the operators of the cluster have to authenticate to Azure",
-        )
-
-        operators_authentication = cls._args_schema.platform.operators_authentication
-        operators_authentication.user_assigned_identities = AAZObjectArg(
-            options=["user-assigned-identities"],
-            help="Represents the information related to Azure User-Assigned managed identities needed to perform Operators authentication based on Azure User-Assigned Managed Identities",
-        )
-
-        user_assigned_identities = cls._args_schema.platform.operators_authentication.user_assigned_identities
-        user_assigned_identities.control_plane_operators = AAZDictArg(
-            options=["control-plane-operators"],
-            help="The set of Azure User-Assigned Managed Identities leveraged for the Control Plane operators of the cluster. The set of required managed identities is dependent on the Cluster's OpenShift version.",
-        )
-        user_assigned_identities.data_plane_operators = AAZDictArg(
-            options=["data-plane-operators"],
-            help="The set of Azure User-Assigned Managed Identities leveraged for the Data Plane operators of the cluster. The set of required managed identities is dependent on the Cluster's OpenShift version.",
-        )
-        user_assigned_identities.service_managed_identity = AAZResourceIdArg(
-            options=["service-managed-identity"],
-            help="Represents the information associated to an Azure User-Assigned Managed Identity whose purpose is to perform service level actions.",
-        )
-
-        control_plane_operators = cls._args_schema.platform.operators_authentication.user_assigned_identities.control_plane_operators
-        control_plane_operators.Element = AAZResourceIdArg(
-            nullable=True,
-        )
-
-        data_plane_operators = cls._args_schema.platform.operators_authentication.user_assigned_identities.data_plane_operators
-        data_plane_operators.Element = AAZResourceIdArg(
-            nullable=True,
         )
 
         # define Arg Group "Resource"
@@ -360,7 +364,7 @@ class Update(AAZCommand):
         def query_parameters(self):
             parameters = {
                 **self.serialize_query_param(
-                    "api-version", "2026-09-01-preview",
+                    "api-version", "2026-10-01",
                     required=True,
                 ),
             }
@@ -459,7 +463,7 @@ class Update(AAZCommand):
         def query_parameters(self):
             parameters = {
                 **self.serialize_query_param(
-                    "api-version", "2026-09-01-preview",
+                    "api-version", "2026-10-01",
                     required=True,
                 ),
             }
@@ -535,7 +539,7 @@ class Update(AAZCommand):
                 properties.set_prop("etcd", AAZObjectType, ".etcd")
                 properties.set_prop("imageDigestMirrors", AAZListType, ".image_digest_mirrors")
                 properties.set_prop("nodeDrainTimeoutMinutes", AAZIntType, ".node_drain_timeout")
-                properties.set_prop("platform", AAZObjectType, ".platform", typ_kwargs={"flags": {"required": True}})
+                properties.set_prop("platform", AAZObjectType, ".", typ_kwargs={"flags": {"required": True}})
                 properties.set_prop("version", AAZObjectType, ".", typ_kwargs={"flags": {"required": True}})
 
             autoscaling = _builder.get(".properties.autoscaling")
@@ -580,7 +584,12 @@ class Update(AAZCommand):
 
             platform = _builder.get(".properties.platform")
             if platform is not None:
+                platform.set_prop("containerRegistry", AAZObjectType)
                 platform.set_prop("operatorsAuthentication", AAZObjectType, ".operators_authentication", typ_kwargs={"flags": {"required": True}})
+
+            container_registry = _builder.get(".properties.platform.containerRegistry")
+            if container_registry is not None:
+                container_registry.set_prop("managedIdentity", AAZStrType, ".container_registry_managed_identity")
 
             operators_authentication = _builder.get(".properties.platform.operatorsAuthentication")
             if operators_authentication is not None:
@@ -796,6 +805,9 @@ class _UpdateHelper:
             serialized_name="activeKey",
             flags={"required": True},
         )
+        kms.key_vault_type = AAZStrType(
+            serialized_name="keyVaultType",
+        )
         kms.vault_name = AAZStrType(
             serialized_name="vaultName",
             flags={"required": True},
@@ -847,6 +859,9 @@ class _UpdateHelper:
         )
 
         platform = _schema_hcp_open_shift_cluster_read.properties.platform
+        platform.container_registry = AAZObjectType(
+            serialized_name="containerRegistry",
+        )
         platform.issuer_url = AAZStrType(
             serialized_name="issuerUrl",
             flags={"read_only": True},
@@ -872,6 +887,11 @@ class _UpdateHelper:
         platform.vnet_integration_subnet_id = AAZStrType(
             serialized_name="vnetIntegrationSubnetId",
             flags={"required": True},
+        )
+
+        container_registry = _schema_hcp_open_shift_cluster_read.properties.platform.container_registry
+        container_registry.managed_identity = AAZStrType(
+            serialized_name="managedIdentity",
         )
 
         operators_authentication = _schema_hcp_open_shift_cluster_read.properties.platform.operators_authentication
@@ -901,7 +921,19 @@ class _UpdateHelper:
         data_plane_operators.Element = AAZStrType()
 
         status = _schema_hcp_open_shift_cluster_read.properties.status
+        status.active_versions = AAZListType(
+            serialized_name="activeVersions",
+            flags={"read_only": True},
+        )
         status.conditions = AAZListType(
+            flags={"read_only": True},
+        )
+
+        active_versions = _schema_hcp_open_shift_cluster_read.properties.status.active_versions
+        active_versions.Element = AAZObjectType()
+
+        _element = _schema_hcp_open_shift_cluster_read.properties.status.active_versions.Element
+        _element.version = AAZStrType(
             flags={"read_only": True},
         )
 
