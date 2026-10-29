@@ -22,8 +22,10 @@ from azure.mgmt.core.tools import is_valid_resource_id, parse_resource_id, resou
 from knack.log import get_logger
 
 from ..aaz.latest.aro.hcp.cluster._create import Create as _ClusterCreate
+from ..aaz.latest.aro.hcp.cluster._show import Show as _ClusterShow
 from ..aaz.latest.aro.hcp.cluster._update import Update as _ClusterUpdate
 from ..aaz.latest.aro.hcp.cluster._request_credential import RequestCredential as _RequestCredential
+from ..aaz.latest.aro.hcp.cluster.nodepool._create import Create as _NodepoolCreate
 from ..aaz.latest.aro.hcp._get_versions import GetVersions as _GetVersions
 
 logger = get_logger(__name__)
@@ -259,6 +261,44 @@ class ClusterCreate(_ClusterCreate):
             elif _content:
                 _content["identity"] = {"type": "UserAssigned"}
             return _content
+
+
+class NodepoolCreate(_NodepoolCreate):
+    AZ_HELP = {
+        **_NodepoolCreate.AZ_HELP,
+        "examples": [
+            {
+                "name": "Create a node pool",
+                "text": "az aro hcp cluster nodepool create --resource-group MyResourceGroup "
+                        "--cluster-name MyCluster --name MyNodePool --replicas 3 "
+                        "--vm-size Standard_D8s_v3 --version 4.19.0 --channel-group stable",
+            },
+            {
+                "name": "Create an autoscaling node pool with labels, taints and disk config",
+                "text": "az aro hcp cluster nodepool create --resource-group MyResourceGroup "
+                        "--cluster-name MyCluster --name MyNodePool --vm-size Standard_D8s_v3 "
+                        "--version 4.19.0 --channel-group stable --min-replicas 1 --max-replicas 5 "
+                        "--disk-size 128 --disk-storage-account-type Premium_LRS --auto-repair true "
+                        "--labels \"[{key:tier,value:frontend}]\" "
+                        "--taints \"[{key:dedicated,value:gpu,effect:NoSchedule}]\"",
+            },
+        ],
+    }
+
+    @classmethod
+    def _build_arguments_schema(cls, *args, **kwargs):
+        args_schema = super()._build_arguments_schema(*args, **kwargs)
+        args_schema.location._registered = False  # pylint: disable=protected-access
+        args_schema.location._required = False  # pylint: disable=protected-access
+        return args_schema
+
+    def pre_operations(self):
+        args = self.ctx.args
+        cluster = _ClusterShow(cli_ctx=self.cli_ctx)(command_args={
+            "resource_group": args.resource_group.to_serialized_data(),
+            "name": args.cluster_name.to_serialized_data(),
+        })
+        args.location = cluster["location"]
 
 
 class ClusterUpdate(_ClusterUpdate):
