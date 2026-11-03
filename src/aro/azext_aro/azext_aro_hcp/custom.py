@@ -15,6 +15,7 @@ from azure.cli.core.aaz import (
     AAZListArg,
     AAZObjectArg,
     AAZStrArg,
+    AAZUndefined,
     has_value,
 )
 from azure.cli.core.azclierror import InvalidArgumentValueError
@@ -175,10 +176,12 @@ class ClusterCreate(_ClusterCreate):
         if hasattr(args_schema, "assign_control_plane_operator_identity"):
             return args_schema
 
-        # Remove once platform managed etcd encryption has been implemented and
-        # key management mode can safely default to PlatformManaged
-        args_schema.key_management_mode._default = None  # pylint: disable=protected-access
+        args_schema.key_management_mode._default = AAZUndefined  # pylint: disable=protected-access
         args_schema.key_management_mode._required = True  # pylint: disable=protected-access
+        args_schema.nsg._required = True  # pylint: disable=protected-access
+        args_schema.version._required = True  # pylint: disable=protected-access
+        args_schema.subnet_id._required = True  # pylint: disable=protected-access
+        args_schema.vnet_integration_subnet_id._required = True  # pylint: disable=protected-access
 
         args_schema.user_assigned_identities._registered = False  # pylint: disable=protected-access
         args_schema.operators_authentication._registered = False  # pylint: disable=protected-access
@@ -288,6 +291,8 @@ class NodepoolCreate(_NodepoolCreate):
     @classmethod
     def _build_arguments_schema(cls, *args, **kwargs):
         args_schema = super()._build_arguments_schema(*args, **kwargs)
+        args_schema.vm_size._required = True  # pylint: disable=protected-access
+        args_schema.version._required = True  # pylint: disable=protected-access
         args_schema.location._registered = False  # pylint: disable=protected-access
         args_schema.location._required = False  # pylint: disable=protected-access
         return args_schema
@@ -431,7 +436,7 @@ class GetVersions(_GetVersions):
         args_schema = super()._build_arguments_schema(*args, **kwargs)
         args_schema.control_plane = AAZBoolArg(
             options=["--control-plane"],
-            help="List the distinct Major.Minor (X.Y) versions available for the control plane. "
+            help="List the distinct Major.Minor (X.Y) versions per channel group available for the control plane. "
                  "Use one of these with 'cluster create --version', which takes an X.Y version.",
             default=False,
         )
@@ -471,10 +476,11 @@ class GetVersions(_GetVersions):
             seen = set()
             for v in enabled:
                 xy = _major_minor(v.get('name', ''))
-                if not xy or xy in seen:
-                    continue
-                seen.add(xy)
                 row = _version_row(v)
+                version_channel = (xy, row['ChannelGroup'])
+                if not xy or version_channel in seen:
+                    continue
+                seen.add(version_channel)
                 row['Name'] = xy
                 rows.append(row)
         else:
