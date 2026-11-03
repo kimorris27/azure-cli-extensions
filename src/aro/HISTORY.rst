@@ -14,6 +14,8 @@ Pending
 * Remove `--no-wait` from `az aro hcp cluster request-credential`.
 * Fix etcd encryption arguments for both `az aro hcp cluster create` and `az aro hcp cluster update`
 * Update `az aro hcp cluster create` example command in help text.
+* Ensure all required arguments are shown as required in help text for `az aro hcp cluster create` and `az aro hcp nodepool create`
+* Fix bug in control plane version listing to ensure all unique (version, channel group) pairs are included in the output.
 
 1.0.14
 ++++++
